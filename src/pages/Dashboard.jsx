@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
@@ -6,9 +6,11 @@ import {
   History, RefreshCw, Timer, Settings,
   Wallet, Scale, CheckSquare, Eye, EyeOff,
   UtensilsCrossed, Dumbbell, ClipboardList,
-  TrendingDown, TrendingUp, X, Camera, User, Play, Pause, RotateCcw, Save
+  TrendingDown, TrendingUp, X, Camera, User, Play, Pause, RotateCcw, Save,
+  CheckCircle2, XCircle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 function formatRupiah(n) {
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -103,6 +105,24 @@ export default function Dashboard() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [weightModalOpen, setWeightModalOpen] = useState(false)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(null) // null | 'checking' | 'connected' | 'failed'
+
+  const handleSync = async () => {
+    setSyncStatus('checking')
+    try {
+      // Test connection by querying each table
+      const { error } = await supabase.from('transactions').select('id').limit(1)
+      if (error) throw error
+      // Connection OK — run sync
+      await store.syncToSupabase()
+      setSyncStatus('connected')
+    } catch (err) {
+      console.warn('[Sync] connection check failed:', err.message)
+      setSyncStatus('failed')
+    }
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => setSyncStatus(null), 3000)
+  }
 
   const balance = store.getBalance()
   const currentWeight = store.weightLogs[0]?.weight || 0
@@ -116,27 +136,34 @@ export default function Dashboard() {
   const upcomingCount = todayTasks.filter((t) => !t.is_completed).length
   const taskCategories = [...new Set(todayTasks.filter((t) => !t.is_completed).map((t) => t.category))]
 
-  // Recent activity - merge all data sources
-  const recentActivity = [
-    ...store.transactions.slice(0, 3).map((t) => ({
-      id: `tx-${t.id}`, type: 'transaction', icon: t.type === 'income' ? Wallet : UtensilsCrossed,
-      title: t.note, subtitle: t.date, value: t.type === 'income' ? `+${formatRupiah(t.amount)}` : `-${formatRupiah(t.amount)}`,
-      valueColor: t.type === 'income' ? 'text-primary-container dark:text-[#00add0]' : 'text-tertiary dark:text-[#ffb86c]',
-      badge: t.category, badgeColor: 'bg-tertiary-fixed dark:bg-[#2a2a2a] text-tertiary dark:text-[#ffb86c]'
-    })),
-    ...store.tasks.slice(0, 2).map((t) => ({
-      id: `task-${t.id}`, type: 'task', icon: CheckSquare,
-      title: t.description, subtitle: t.date, value: t.is_completed ? 'Done' : 'Pending',
-      valueColor: t.is_completed ? 'text-secondary dark:text-[#44e2cd]' : 'text-[#6d797e] dark:text-[#869398]',
-      badge: t.category, badgeColor: 'bg-secondary-fixed dark:bg-[#2a2a2a] text-secondary dark:text-[#44e2cd]'
-    })),
-    ...store.weightLogs.slice(0, 1).map((w) => ({
-      id: `wt-${w.id}`, type: 'weight', icon: Dumbbell,
-      title: w.note, subtitle: w.date, value: `${w.weight} kg`,
-      valueColor: 'text-secondary dark:text-[#44e2cd]',
-      badge: 'Health', badgeColor: 'bg-secondary-fixed dark:bg-[#2a2a2a] text-secondary dark:text-[#44e2cd]'
-    })),
-  ].slice(0, 5)
+  // Recent activity - merge all data sources (reactive to store changes)
+  const recentActivity = useMemo(() => {
+    const all = [
+      ...store.transactions.map((t) => ({
+        id: `tx-${t.id}`, type: 'transaction', icon: t.type === 'income' ? Wallet : UtensilsCrossed,
+        title: t.note, subtitle: t.date, value: t.type === 'income' ? `+${formatRupiah(t.amount)}` : `-${formatRupiah(t.amount)}`,
+        valueColor: t.type === 'income' ? 'text-primary-container dark:text-[#00add0]' : 'text-tertiary dark:text-[#ffb86c]',
+        badge: t.category, badgeColor: 'bg-tertiary-fixed dark:bg-[#2a2a2a] text-tertiary dark:text-[#ffb86c]',
+        sortDate: t.created_at || t.date
+      })),
+      ...store.tasks.map((t) => ({
+        id: `task-${t.id}`, type: 'task', icon: CheckSquare,
+        title: t.description, subtitle: t.date, value: t.is_completed ? 'Done' : 'Pending',
+        valueColor: t.is_completed ? 'text-secondary dark:text-[#44e2cd]' : 'text-[#6d797e] dark:text-[#869398]',
+        badge: t.category, badgeColor: 'bg-secondary-fixed dark:bg-[#2a2a2a] text-secondary dark:text-[#44e2cd]',
+        sortDate: t.created_at || t.date
+      })),
+      ...store.weightLogs.map((w) => ({
+        id: `wt-${w.id}`, type: 'weight', icon: Dumbbell,
+        title: w.note, subtitle: w.date, value: `${w.weight} kg`,
+        valueColor: 'text-secondary dark:text-[#44e2cd]',
+        badge: 'Health', badgeColor: 'bg-secondary-fixed dark:bg-[#2a2a2a] text-secondary dark:text-[#44e2cd]',
+        sortDate: w.created_at || w.date
+      })),
+    ]
+    // Sort by most recent first, take top 5
+    return all.sort((a, b) => String(b.sortDate).localeCompare(String(a.sortDate))).slice(0, 5)
+  }, [store.transactions, store.tasks, store.weightLogs])
 
   // Quick Add Expense Modal
   const [expForm, setExpForm] = useState({ amount: '', note: '', category: 'Makan Keluarga' })
@@ -185,7 +212,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-4 gap-2">
             {[
               { icon: History, label: 'History', action: () => navigate('/finance') },
-              { icon: RefreshCw, label: 'Sync', action: store.syncToSupabase, spinning: store.isSyncing },
+              { icon: RefreshCw, label: 'Sync', action: handleSync, spinning: store.isSyncing || syncStatus === 'checking' },
               { icon: Timer, label: 'Focus Timer', action: () => setTimerOpen(true) },
               { icon: Settings, label: 'Settings', action: () => setSettingsOpen(true) },
             ].map(({ icon: Icon, label, action, spinning }) => (
@@ -369,6 +396,28 @@ export default function Dashboard() {
           <button onClick={handleAddTask} className="w-full py-3 rounded-full bg-primary-container dark:bg-[#00add0] text-white font-bold">Save</button>
         </div>
       </Modal>
+
+      {/* Sync Status Toast */}
+      {syncStatus && syncStatus !== 'checking' && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg backdrop-blur-sm animate-slide-up ${
+          syncStatus === 'connected'
+            ? 'bg-green-500/95 text-white'
+            : 'bg-red-500/95 text-white'
+        }`}>
+          {syncStatus === 'connected'
+            ? <CheckCircle2 className="w-5 h-5" />
+            : <XCircle className="w-5 h-5" />
+          }
+          <div>
+            <p className="text-sm font-bold">
+              {syncStatus === 'connected' ? 'Database Connected' : 'Failed to Connect'}
+            </p>
+            <p className="text-[10px] opacity-80">
+              {syncStatus === 'connected' ? 'All data synced to Supabase' : 'Check your connection and try again'}
+            </p>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
