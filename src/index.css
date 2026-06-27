@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-[#191c1d] font-sans antialiased;
+  }
+  .dark body {
+    @apply bg-[#131313] text-[#e5e2e1];
+  }
+}
+
+@layer components {
+  /* Card component */
+  .card {
+    @apply bg-white dark:bg-[#1c1b1b] rounded-lg p-4 shadow-card;
+  }
+  .card-elevated {
+    @apply bg-white dark:bg-[#2a2a2a] rounded-lg p-4 shadow-elevated;
+  }
+
+  /* FAB */
+  .fab {
+    @apply fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center shadow-fab z-40;
+  }
+  .dark .fab {
+    @apply bg-[#00add0];
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full min-h-[48px] px-4 py-3 rounded-lg bg-surface-low dark:bg-[#1e1e1e] border border-surface-highest dark:border-[#3f3f46] text-[#191c1d] dark:text-[#e5e2e1] placeholder:text-[#6d797e] dark:placeholder:text-[#869398] focus:outline-none focus:border-primary-container dark:focus:border-[#00add0] focus:ring-2 focus:ring-primary-container/20;
+  }
+
+  /* Chip */
+  .chip {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Bottom nav safe area */
+  .nav-safe-area {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #bcc8ce;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #3d494d;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+}
