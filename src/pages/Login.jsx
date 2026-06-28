@@ -9,11 +9,21 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
 
-  const handleLogin = (e) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleLogin = async (e) => {
     e.preventDefault()
-    const success = login(username, password)
-    if (!success) {
-      setError('Invalid username or password')
+    setError('')
+    setLoading(true)
+    try {
+      const success = await login(username, password)
+      if (!success) {
+        setError('Invalid username or password')
+      }
+    } catch {
+      setError('Connection error, try again')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -72,7 +82,8 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-full bg-primary-container dark:bg-[#00add0] text-white font-bold text-base flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-elevated"
+            disabled={loading}
+            className="w-full py-3.5 rounded-full bg-primary-container dark:bg-[#00add0] text-white font-bold text-base flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-elevated disabled:opacity-50"
           >
             <LogIn className="w-5 h-5" />
             Sign In

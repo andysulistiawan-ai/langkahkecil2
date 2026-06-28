@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',   // Auto-update SW on new deploy
       injectRegister: 'auto',       // Auto-inject registration script
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png'],
 
       manifest: {
         name: 'LangkahKecil',

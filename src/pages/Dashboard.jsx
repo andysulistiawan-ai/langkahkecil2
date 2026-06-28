@@ -68,9 +68,34 @@ function SettingsModal({ isOpen, onClose }) {
   const { user, updateUser } = useStore()
   const [name, setName] = useState(user.name)
   const [avatarUrl, setAvatarUrl] = useState(user.avatar)
+  const [newUsername, setNewUsername] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [oldPassword, setOldPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleSave = () => {
-    updateUser({ name, avatar: avatarUrl })
+    // If any credential field is filled, validate old password
+    if (newUsername || newPassword) {
+      if (!oldPassword) {
+        setError('Old password is required')
+        return
+      }
+      if (oldPassword !== user.password) {
+        setError('Old password is incorrect')
+        return
+      }
+    }
+
+    const updates = { name, avatar: avatarUrl }
+    if (newUsername) updates.username = newUsername
+    if (newPassword) updates.password = newPassword
+
+    updateUser(updates)
+    // Reset credential fields
+    setNewUsername('')
+    setNewPassword('')
+    setOldPassword('')
+    setError('')
     onClose()
   }
 
@@ -82,12 +107,34 @@ function SettingsModal({ isOpen, onClose }) {
             {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <User className="w-8 h-8" />}
           </div>
           <label className="block text-xs font-semibold text-[#3d494d] dark:text-[#bcc8ce] uppercase tracking-wider">Avatar URL</label>
-          <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="input-field text-sm" placeholder="https://..." />
+          <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="input-field text-sm" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-[#3d494d] dark:text-[#bcc8ce] uppercase tracking-wider mb-1.5">Display Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className="input-field" />
         </div>
+
+        {/* Change Credentials */}
+        <div className="border-t border-surface-high dark:border-[#27272a] pt-4">
+          <p className="text-xs font-semibold text-[#3d494d] dark:text-[#bcc8ce] uppercase tracking-wider mb-3">Change Login Credentials</p>
+          <p className="text-[10px] text-[#6d797e] dark:text-[#869398] mb-3">Leave blank to keep current username & password</p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6d797e] dark:text-[#869398] mb-1">New Username</label>
+              <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="input-field text-sm" placeholder={user.username} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6d797e] dark:text-[#869398] mb-1">New Password</label>
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field text-sm" placeholder="••••••••" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6d797e] dark:text-[#869398] mb-1">Old Password <span className="text-red-500">*</span></label>
+              <input type="password" value={oldPassword} onChange={(e) => { setOldPassword(e.target.value); setError('') }} className="input-field text-sm" placeholder="Required to save changes" />
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-500 font-semibold mt-2">{error}</p>}
+        </div>
+
         <button onClick={handleSave} className="w-full py-3 rounded-full bg-primary-container dark:bg-[#00add0] text-white font-bold flex items-center justify-center gap-2">
           <Save className="w-4 h-4" /> Save Changes
         </button>

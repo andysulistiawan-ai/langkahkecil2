@@ -48,13 +48,45 @@ const seedWeightLogs = [
 export const useStore = create((set, get) => ({
   // Auth
   isAuthenticated: false,
-  user: { id: '1', username: 'admin', name: 'LangkahKecil', avatar: '', height: 170, weightGoal: 65, weightStart: null },
-  login: (username, password) => {
-    if (username === 'admin' && password === 'admin123') {
+  user: { id: '1', username: 'admin', password: 'admin123', name: 'LangkahKecil', avatar: '', height: 170, weightGoal: 65, weightStart: null },
+  login: async (username, password) => {
+    // First check Supabase profiles table
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .single()
+
+      if (profile) {
+        // Load profile into user state
+        set({
+          isAuthenticated: true,
+          user: {
+            id: profile.id,
+            username: profile.username,
+            password: profile.password,
+            name: profile.name || '',
+            avatar: profile.avatar || '',
+            height: profile.height || 170,
+            weightGoal: profile.weight_goal || 65,
+            weightStart: profile.weight_start || null,
+          },
+        })
+        get().fetchFromSupabase()
+        get().subscribeRealtime()
+        return true
+      }
+    } catch (e) {
+      console.warn('[SB] profile lookup failed, using local fallback:', e.message)
+    }
+
+    // Fallback: check local user state (offline / Supabase unavailable)
+    const u = get().user
+    if (username === u.username && password === u.password) {
       set({ isAuthenticated: true })
-      // Fetch data from Supabase on login
       get().fetchFromSupabase()
-      // Subscribe to realtime for multi-device sync
       get().subscribeRealtime()
       return true
     }
@@ -64,7 +96,31 @@ export const useStore = create((set, get) => ({
     get().unsubscribeRealtime()
     set({ isAuthenticated: false })
   },
-  updateUser: (data) => set((s) => ({ user: { ...s.user, ...data } })),
+  updateUser: (data) => {
+    set((s) => ({ user: { ...s.user, ...data } }))
+    // Sync profile to Supabase
+    const u = get().user
+    const profileRow = {
+      id: u.id,
+      username: u.username,
+      password: u.password,
+      name: u.name || '',
+      avatar: u.avatar || '',
+      height: u.height || 170,
+      weight_goal: u.weightGoal || 65,
+      weight_start: u.weightStart || null,
+      updated_at: new Date().toISOString(),
+    }
+    // Merge any just-updated fields
+    if (data.username !== undefined) profileRow.username = data.username
+    if (data.password !== undefined) profileRow.password = data.password
+    if (data.name !== undefined) profileRow.name = data.name
+    if (data.avatar !== undefined) profileRow.avatar = data.avatar
+    if (data.height !== undefined) profileRow.height = data.height
+    if (data.weightGoal !== undefined) profileRow.weight_goal = data.weightGoal
+    if (data.weightStart !== undefined) profileRow.weight_start = data.weightStart
+    supabase.from('profiles').upsert(profileRow).catch((e) => console.warn('[SB] profile upsert:', e.message))
+  },
 
   // Theme
   darkMode: false,
@@ -129,16 +185,32 @@ export const useStore = create((set, get) => ({
   fetchFromSupabase: async () => {
     set({ isFetching: true })
     try {
-      const [txRes, taskRes, wlRes] = await Promise.all([
+      const [txRes, taskRes, wlRes, profileRes] = await Promise.all([
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('weight_logs').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('*').eq('id', get().user.id).single(),
       ])
 
       const updates = {}
       if (txRes.data && txRes.data.length > 0) updates.transactions = txRes.data
       if (taskRes.data && taskRes.data.length > 0) updates.tasks = taskRes.data
       if (wlRes.data && wlRes.data.length > 0) updates.weightLogs = wlRes.data
+
+      // Load profile from Supabase
+      if (profileRes.data) {
+        const p = profileRes.data
+        updates.user = {
+          ...get().user,
+          username: p.username,
+          password: p.password,
+          name: p.name || '',
+          avatar: p.avatar || '',
+          height: p.height || 170,
+          weightGoal: p.weight_goal || 65,
+          weightStart: p.weight_start || null,
+        }
+      }
 
       if (Object.keys(updates).length > 0) set(updates)
     } catch (err) {
