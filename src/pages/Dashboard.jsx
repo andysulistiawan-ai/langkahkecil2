@@ -147,7 +147,7 @@ function SettingsModal({ isOpen, onClose }) {
 export default function Dashboard() {
   const store = useStore()
   const navigate = useNavigate()
-  const [showBalance, setShowBalance] = useState(true)
+  const [showBalance, setShowBalance] = useState(false)
   const [timerOpen, setTimerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)

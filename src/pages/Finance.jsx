@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
-import { Plus, Pencil, Trash2, TrendingDown, TrendingUp, X, Eye, EyeOff, Filter, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, TrendingDown, TrendingUp, X, Eye, EyeOff, Filter, Check, ChevronDown } from 'lucide-react'
 import DateFilter from '../components/DateFilter'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
 import { toDateStr, todayStr, yesterdayStr } from '../lib/date'
@@ -26,17 +26,31 @@ export default function Finance() {
   const [extraIncomeCats, setExtraIncomeCats] = useState([])
   const [showCustomCat, setShowCustomCat] = useState(false)
   const [customCat, setCustomCat] = useState('')
-  const [hideBalance, setHideBalance] = useState(false)
-  const [hideIncome, setHideIncome] = useState(false)
-  const [hideExpense, setHideExpense] = useState(false)
+  const [hideBalance, setHideBalance] = useState(true)
+  const [hideIncome, setHideIncome] = useState(true)
+  const [hideExpense, setHideExpense] = useState(true)
   const [visibleCategories, setVisibleCategories] = useState(allCategories)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [chartTypeOpen, setChartTypeOpen] = useState(false)
+  const [chartType, setChartType] = useState({ expense: true, income: false })
+  const chartTypeRef = useRef(null)
+
+  // Close chart-type dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (chartTypeRef.current && !chartTypeRef.current.contains(e.target)) setChartTypeOpen(false)
+    }
+    if (chartTypeOpen) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [chartTypeOpen])
+
+  const chartLabel = chartType.income ? 'Pemasukan' : 'Pengeluaran'
   const [filterDraft, setFilterDraft] = useState(allCategories)
   const [dateRange, setDateRange] = useState({
-    preset: 'month',
-    startDate: toDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    preset: '7d',
+    startDate: toDateStr(new Date(Date.now() - 6 * 86400000)),
     endDate: todayStr(),
-    label: 'Bulan Ini',
+    label: '7 Hari',
   })
 
   const [form, setForm] = useState({
@@ -215,8 +229,39 @@ export default function Finance() {
       {/* Chart */}
       <div className="card mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#191c1d] dark:text-white">Pengeluaran</h3>
-          <DateFilter defaultPreset="month" onChange={setDateRange} />
+          {/* Chart type selector (dropdown with checkboxes) */}
+          <div className="relative" ref={chartTypeRef}>
+            <button
+              onClick={() => setChartTypeOpen(!chartTypeOpen)}
+              className="flex items-center gap-1 text-sm font-bold text-[#191c1d] dark:text-white"
+            >
+              {chartLabel}
+              <ChevronDown className={`w-4 h-4 transition-transform ${chartTypeOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {chartTypeOpen && (
+              <div className="absolute left-0 top-full mt-2 z-50 w-44 bg-white dark:bg-[#1c1b1b] rounded-xl shadow-elevated border border-surface-high dark:border-[#27272a] p-2 space-y-1">
+                {[
+                  { key: 'expense', label: 'Pengeluaran' },
+                  { key: 'income', label: 'Pemasukan' },
+                ].map(({ key, label }) => {
+                  const checked = chartType[key]
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setChartType({ expense: false, income: false, [key]: true })}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-low dark:hover:bg-[#201f1f] transition-colors"
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${checked ? 'bg-primary-container dark:bg-[#00add0] border-primary-container dark:border-[#00add0]' : 'border-[#bcc8ce] dark:border-[#3d494d]'}`}>
+                        {checked && <Check className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <span className="text-sm font-semibold text-[#191c1d] dark:text-white">{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+          <DateFilter defaultPreset="7d" onChange={setDateRange} />
         </div>
         <div className="h-40">
           <ResponsiveContainer width="100%" height="100%">
@@ -227,14 +272,18 @@ export default function Finance() {
                 contentStyle={{ background: '#1c1b1b', border: 'none', borderRadius: '8px', color: '#e5e2e1', fontSize: '12px' }}
                 formatter={(val) => [`${val}k`, '']}
               />
-              <Bar dataKey="income" radius={[4, 4, 0, 0]}>
-                {chartData.map((_, i) => <Cell key={i} fill="#44e2cd" />)}
-                <LabelList dataKey="incomeLabel" position="top" style={{ fontSize: '9px', fontWeight: '600' }} fill="#16a34a" />
-              </Bar>
-              <Bar dataKey="expense" radius={[4, 4, 0, 0]}>
-                {chartData.map((_, i) => <Cell key={i} fill="#00add0" />)}
-                <LabelList dataKey="expenseLabel" position="top" style={{ fontSize: '9px', fontWeight: '600' }} fill="#ef4444" />
-              </Bar>
+              {chartType.income && (
+                <Bar dataKey="income" radius={[4, 4, 0, 0]}>
+                  {chartData.map((_, i) => <Cell key={i} fill="#44e2cd" />)}
+                  <LabelList dataKey="incomeLabel" position="top" style={{ fontSize: '9px', fontWeight: '600' }} fill="#16a34a" />
+                </Bar>
+              )}
+              {chartType.expense && (
+                <Bar dataKey="expense" radius={[4, 4, 0, 0]}>
+                  {chartData.map((_, i) => <Cell key={i} fill="#00add0" />)}
+                  <LabelList dataKey="expenseLabel" position="top" style={{ fontSize: '9px', fontWeight: '600' }} fill="#ef4444" />
+                </Bar>
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>
