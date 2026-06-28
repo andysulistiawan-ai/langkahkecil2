@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Calendar } from 'lucide-react'
+import { toDateStr } from '../lib/date'
 
 const presets = [
   { key: '7d', label: '7 Hari', days: 7 },
@@ -60,8 +61,8 @@ export default function DateFilter({ defaultPreset = '7d', onChange }) {
     const { start, end } = getDateRange(activePreset)
     onChange?.({
       preset: activePreset,
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate: toDateStr(start),
+      endDate: toDateStr(end),
       label: getLabel(activePreset, '', ''),
     })
   }, [activePreset])

@@ -5,20 +5,21 @@ import Modal from '../components/Modal'
 import { Plus, Pencil, Trash2, TrendingDown, TrendingUp, Target } from 'lucide-react'
 import DateFilter from '../components/DateFilter'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import { toDateStr, todayStr, yesterdayStr } from '../lib/date'
 
 export default function Weight() {
   const store = useStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editId, setEditId] = useState(null)
-  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], weight: '', note: '' })
+  const [form, setForm] = useState({ date: todayStr(), weight: '', note: '' })
   const [bmiHeight, setBmiHeight] = useState(store.user?.height || 170)
   const [bmiWeight, setBmiWeight] = useState(0)
   const [goalModalOpen, setGoalModalOpen] = useState(false)
   const [goalForm, setGoalForm] = useState({ startWeight: '', targetWeight: '' })
   const [dateRange, setDateRange] = useState({
     preset: '7d',
-    startDate: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: toDateStr(new Date(Date.now() - 6 * 86400000)),
+    endDate: todayStr(),
     label: '7 Hari',
   })
 
@@ -92,12 +93,12 @@ export default function Weight() {
     for (let i = 0; i < totalDays; i++) {
       const d = new Date(start)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = toDateStr(d)
       const log = logs.find((l) => l.date === dateStr)
       // Find previous day's log for diff
       const prevDate = new Date(d)
       prevDate.setDate(prevDate.getDate() - 1)
-      const prevDateStr = prevDate.toISOString().split('T')[0]
+      const prevDateStr = toDateStr(prevDate)
       const prevLog = logs.find((l) => l.date === prevDateStr)
       const diff = log && prevLog ? (log.weight - prevLog.weight).toFixed(1) : '0.0'
       const lbl = totalDays > 14
@@ -115,7 +116,7 @@ export default function Weight() {
 
   const openAdd = () => {
     setEditId(null)
-    setForm({ date: new Date().toISOString().split('T')[0], weight: '', note: '' })
+    setForm({ date: todayStr(), weight: '', note: '' })
     setModalOpen(true)
   }
 
@@ -137,8 +138,8 @@ export default function Weight() {
   }
 
   const formatDateLabel = (dateStr) => {
-    const today = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const today = todayStr()
+    const yesterday = yesterdayStr()
     if (dateStr === today) return 'Today'
     if (dateStr === yesterday) return 'Yesterday'
     const d = new Date(dateStr)

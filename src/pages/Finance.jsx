@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import { Plus, Pencil, Trash2, TrendingDown, TrendingUp, X, Eye, EyeOff, Filter, Check } from 'lucide-react'
 import DateFilter from '../components/DateFilter'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts'
+import { toDateStr, todayStr, yesterdayStr } from '../lib/date'
 
 function formatRupiah(n) {
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -33,13 +34,13 @@ export default function Finance() {
   const [filterDraft, setFilterDraft] = useState(allCategories)
   const [dateRange, setDateRange] = useState({
     preset: 'month',
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: toDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    endDate: todayStr(),
     label: 'Bulan Ini',
   })
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: todayStr(),
     type: 'expense',
     category: 'Makan Keluarga',
     amount: '',
@@ -89,12 +90,12 @@ export default function Finance() {
     for (let i = 0; i < totalDays; i += step) {
       const d = new Date(start)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = toDateStr(d)
       // For weekly grouping, sum the range
       const endD = new Date(d)
       endD.setDate(endD.getDate() + step - 1)
       const dayTxs = store.transactions.filter((t) => {
-        return t.date >= dateStr && t.date <= endD.toISOString().split('T')[0]
+        return t.date >= dateStr && t.date <= toDateStr(endD)
       })
       const income = dayTxs.filter((t) => t.type === 'income').reduce((a, t) => a + t.amount, 0)
       const expense = dayTxs.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amount, 0)
@@ -115,7 +116,7 @@ export default function Finance() {
 
   const openAdd = () => {
     setEditId(null)
-    setForm({ date: new Date().toISOString().split('T')[0], type: 'expense', category: 'Makan Keluarga', amount: '', note: '' })
+    setForm({ date: todayStr(), type: 'expense', category: 'Makan Keluarga', amount: '', note: '' })
     setModalOpen(true)
   }
 
@@ -156,8 +157,8 @@ export default function Finance() {
   }
 
   const formatDateLabel = (dateStr) => {
-    const today = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const today = todayStr()
+    const yesterday = yesterdayStr()
     if (dateStr === today) return 'Hari Ini'
     if (dateStr === yesterday) return 'Kemarin'
     const d = new Date(dateStr)

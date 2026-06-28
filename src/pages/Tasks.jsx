@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore'
 import Layout from '../components/Layout'
 import Modal from '../components/Modal'
 import { Plus, Pencil, Trash2, Circle, CheckCircle2 } from 'lucide-react'
+import { todayStr } from '../lib/date'
 
 const baseCategories = ['Kantor', 'Kesehatan', 'Keuangan', 'Soft Skill']
 
@@ -17,7 +18,7 @@ export default function Tasks() {
 
   const allCategories = [...baseCategories, ...extraCategories]
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayStr()
   const todayTasks = useMemo(() => store.tasks.filter((t) => t.date === today), [store.tasks, today])
   const completedCount = todayTasks.filter((t) => t.is_completed).length
   const totalCount = todayTasks.length

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { todayStr } from '../lib/date'
 
 function formatRupiah(n) {
   return 'Rp ' + n.toLocaleString('id-ID')
@@ -179,7 +180,7 @@ export default function Dashboard() {
     ? Math.min(100, Math.round(((74 - currentWeight) / (74 - store.user.weightGoal)) * 100))
     : 0
 
-  const todayTasks = store.tasks.filter((t) => t.date === new Date().toISOString().split('T')[0])
+  const todayTasks = store.tasks.filter((t) => t.date === todayStr())
   const upcomingCount = todayTasks.filter((t) => !t.is_completed).length
   const taskCategories = [...new Set(todayTasks.filter((t) => !t.is_completed).map((t) => t.category))]
 
@@ -216,7 +217,7 @@ export default function Dashboard() {
   const [expForm, setExpForm] = useState({ amount: '', note: '', category: 'Makan Keluarga' })
   const handleAddExpense = () => {
     if (!expForm.amount) return
-    store.addTransaction({ type: 'expense', amount: Number(expForm.amount), note: expForm.note, category: expForm.category, date: new Date().toISOString().split('T')[0] })
+    store.addTransaction({ type: 'expense', amount: Number(expForm.amount), note: expForm.note, category: expForm.category, date: todayStr() })
     setExpForm({ amount: '', note: '', category: 'Makan' })
     setExpenseModalOpen(false)
   }
@@ -225,7 +226,7 @@ export default function Dashboard() {
   const [wtForm, setWtForm] = useState({ weight: '', note: '' })
   const handleAddWeight = () => {
     if (!wtForm.weight) return
-    store.addWeightLog({ weight: Number(wtForm.weight), note: wtForm.note, date: new Date().toISOString().split('T')[0] })
+    store.addWeightLog({ weight: Number(wtForm.weight), note: wtForm.note, date: todayStr() })
     setWtForm({ weight: '', note: '' })
     setWeightModalOpen(false)
   }
@@ -234,7 +235,7 @@ export default function Dashboard() {
   const [taskForm, setTaskForm] = useState({ description: '', category: 'Kantor' })
   const handleAddTask = () => {
     if (!taskForm.description) return
-    store.addTask({ description: taskForm.description, category: taskForm.category, date: new Date().toISOString().split('T')[0] })
+    store.addTask({ description: taskForm.description, category: taskForm.category, date: todayStr() })
     setTaskForm({ description: '', category: 'Kantor' })
     setTaskModalOpen(false)
   }

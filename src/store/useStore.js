@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { toDateStr } from '../lib/date'
 
-const today = new Date().toISOString().split('T')[0]
+const today = toDateStr(new Date())
 
 // Fire-and-forget Supabase calls (no await needed in UI)
 const sbInsert = async (table, row) => {
